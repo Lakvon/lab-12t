@@ -1,187 +1,114 @@
 package org.example;
 
-import org.example.model.BankAccount;
+import org.example.exceptions.AccountException;
+import org.example.model.CheckingAccount;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 public class ClientInterface {
+    private final Scanner scanner = new Scanner(System.in);
+    private final Map<Long, CheckingAccount> accounts = new HashMap<>();
+    private long nextAccountNumber = 1;
 
-    public static void main(String[] args) throws IOException {
-        ClientInterface clientInterface = new ClientInterface();
-        clientInterface.start();
+    public static void main(String[] args) {
+        new ClientInterface().start();
     }
 
-    private final List<BankAccount> accounts = new ArrayList<>();
-
-    private final Scanner scanner = new Scanner(System.in);
-
-    private List<String> options = List.of(
-            "1 - Create account",
-            "2 - Delete account",
-            "3 - Make account deposit",
-            "4 - Make account withdrawal",
-            "5 - Print account info",
-            "6 - Exit"
-    );
-
-    public void start() throws IOException {
-
-        String option;
+    public void start() {
         while (true) {
-            printMainMenu();
-            option = scanner.next();
-
-            switch (Integer.parseInt(option)) {
-                case 1:
-                    try {
-                        addNewAccount();
-                    } catch (Exception e) {
-                        System.err.println("Error: " + e.getMessage() + "\n");
-                        break;
+            System.out.println("""
+                    1 — Створити рахунок
+                    2 — Видалити рахунок
+                    3 — Поповнити рахунок
+                    4 — Зняти кошти
+                    5 — Переглянути рахунок
+                    6 — Вийти""");
+            try {
+                switch (read("Оберіть дію").strip()) {
+                    case "1" -> createAccount();
+                    case "2" -> deleteAccount();
+                    case "3" -> {
+                        authenticate().deposit(readAmount());
+                        System.out.println("Рахунок поповнено.");
                     }
-                    break;
-                case 2:
-                    deleteAccount();
-                    break;
-                case 3:
-                    deposit();
-                    break;
-                case 4:
-                    withdraw();
-                    break;
-                case 5:
-                    printInfo();
-                    break;
-                case 6:
-                    return;
-                default:
-                    // Please enter a valid choice (1 thru 6)
+                    case "4" -> {
+                        authenticate().withdraw(readAmount());
+                        System.out.println("Кошти знято.");
+                    }
+                    case "5" -> printInfo(authenticate());
+                    case "6" -> { return; }
+                    default -> throw new AccountException("Виберіть пункт від 1 до 6.");
+                }
+            } catch (AccountException e) {
+                System.err.println("Помилка: " + e.getMessage());
+            } catch (NoSuchElementException endOfInput) {
+                return;
             }
         }
-
     }
 
-    private void printMainMenu() throws IOException {
-        System.out.println("\n****************");
-        System.out.println("Banking system: ");
-        System.out.println("****************");
-        options.forEach(System.out::println);
-        System.out.print("\n>>> Choose your option: ");
+    private String read(String prompt) {
+        System.out.print(prompt + ": ");
+        return scanner.nextLine();
     }
 
-    private void addNewAccount() {
+    private long readId() {
+        try {
+            return Long.parseLong(read("ID користувача").strip());
+        } catch (NumberFormatException e) {
+            throw new AccountException("ID має бути цілим числом.");
+        }
+    }
 
-        /*
-         * В даному методі ви повинні передбачити перевірки для
-         * коректності полів нового акаунту та створити новий акаунт, якщо всі дані
-         * є коректними
-         */
+    private double readAmount() {
+        try {
+            return Double.parseDouble(read("Сума").strip().replace(',', '.'));
+        } catch (NumberFormatException e) {
+            throw new AccountException("Введіть числову суму.");
+        }
+    }
 
-        System.out.println("\n****************");
-        System.out.println("Creating new account: ");
-        System.out.println("****************");
+    private void createAccount() {
+        String name = read("Ім’я власника").strip();
+        long id = readId();
+        if (accounts.containsKey(id)) {
+            throw new AccountException("Цей ID вже використовується.");
+        }
+        String password = read("Пароль");
+        if (!password.equals(read("Підтвердіть пароль"))) {
+            throw new AccountException("Паролі не збігаються.");
+        }
+        CheckingAccount account = new CheckingAccount(name, nextAccountNumber, id, password);
+        accounts.put(id, account);
+        nextAccountNumber++;
+        System.out.println("Рахунок створено.");
+    }
 
-        System.out.print(">>> Enter customer name: ");
-        var name = scanner.next();
-        System.out.print(">>> Enter user id: ");
-        var userId = scanner.next();
-        System.out.print(">>> Enter user password: ");
-        var password = scanner.next();
-        System.out.print(">>> Confirm password: ");
-        var confirmPassword = scanner.next();
+    private CheckingAccount authenticate() {
+        long id = readId();
+        String password = read("Пароль");
+        CheckingAccount account = accounts.get(id);
+        if (account == null || !account.matchesPassword(password)) {
+            throw new AccountException("Неправильний ID або пароль.");
+        }
+        return account;
     }
 
     private void deleteAccount() {
-
-        /*
-         * В даному методі ви повинні передбачити перевірки для
-         * коректності полів для видалення акаунту та видалити акаунт
-         */
-
-        System.out.println("\n****************");
-        System.out.println("Deleting account: ");
-        System.out.println("****************");
-
-        System.out.print(">>> Enter user id: ");
-        var userId = scanner.next();
-        System.out.print(">>> Enter user password: ");
-        var password = scanner.next();
-    }
-
-    private void deposit() {
-
-        /*
-         * В даному методі ви повинні передбачити перевірки для
-         * коректності полів та зробити внесок
-         */
-
-        System.out.println("\n****************");
-        System.out.println("Making a deposit: ");
-        System.out.println("****************");
-
-        System.out.print(">>> Enter user id: ");
-        var userId = scanner.next();
-        System.out.print(">>> Enter user password: ");
-        var password = scanner.next();
-        System.out.print(">>> Enter amount: ");
-        var amount = scanner.next();
-    }
-
-    private void withdraw() {
-
-        /*
-         * В даному методі ви повинні передбачити перевірки для
-         * коректності полів та зробити зняття коштів
-         */
-
-        System.out.println("\n****************");
-        System.out.println("Making a withdrawal: ");
-        System.out.println("****************");
-
-        System.out.print(">>> Enter user id: ");
-        var userId = scanner.next();
-        System.out.print(">>> Enter user password: ");
-        var password = scanner.next();
-        System.out.print(">>> Enter amount: ");
-        var amount = scanner.next();
-    }
-
-    private void printInfo() {
-
-        /*
-         * Даний метод виводить інформацію щодо рахунку. Ви
-         * повинні перевірити наявність рахунку та вивести інформацію
-         * стосовно нього
-         */
-
-        System.out.println("\n****************");
-        System.out.println("Printing account info: ");
-        System.out.println("****************");
-
-        System.out.print(">>> Enter user id: ");
-        var userId = scanner.next();
-        System.out.print(">>> Enter user password: ");
-        var password = scanner.next();
-
-        System.out.println("\nAccount info: ");
-
-        System.out.println(" - customer name: ");
-        System.out.println(" - account balance: ");
-        System.out.println(" - account type: Checking");
-        System.out.println(" - account daily withdrawal limit: ");
-
-        System.out.print("\nPress Enter to return to main menu...");
-
-        try {
-            System.in.read();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        CheckingAccount account = authenticate();
+        if (account.getAccountBalance() != 0) {
+            throw new AccountException("Для видалення баланс має дорівнювати нулю.");
         }
+        accounts.remove(account.getUserId());
+        System.out.println("Рахунок видалено.");
     }
 
-
-
+    private void printInfo(CheckingAccount account) {
+        System.out.printf("Власник: %s%nНомер рахунку: %d%nID: %d%nТип: Checking%nБаланс: %s%nДенний ліміт: %s%n",
+                account.getCustomerName(), account.getAccountNumber(), account.getUserId(),
+                account.getAccountBalance(), account.getDailyWithdrawalLimit());
+    }
 }
